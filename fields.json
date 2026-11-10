@@ -1,0 +1,524 @@
+[
+  {
+    "code": "00",
+    "name": "uav_id",
+    "type": "string",
+    "unit": "1–64 ký tự",
+    "encoding": "Chuỗi không chứa , hoặc : ở dạng siêu gọn",
+    "description": "Định danh UAV; có thể bỏ khỏi payload nếu đã nằm trong MQTT topic.",
+    "source": "Không có trực tiếp; backend/Pi đặt ID. MAV_SYS_ID là ID MAVLink, không mặc định đồng nhất uav_id."
+  },
+  {
+    "code": "01",
+    "name": "edge_app_version",
+    "type": "string",
+    "unit": "SemVer hoặc chuỗi phiên bản",
+    "encoding": "Ví dụ 1.2.0",
+    "description": "Phiên bản phần mềm gateway chạy trên CC.",
+    "source": "Không có; phiên bản ứng dụng Pi."
+  },
+  {
+    "code": "02",
+    "name": "timestamp_ms",
+    "type": "uint64",
+    "unit": "ms, Unix epoch",
+    "encoding": "Số nguyên ≥ 0",
+    "description": "Thời điểm tạo bản tin; parameter bổ sung khuyến nghị.",
+    "source": "Không có; Pi tạo timestamp Unix của bản tin."
+  },
+  {
+    "code": "03",
+    "name": "sequence_no",
+    "type": "uint32",
+    "unit": "0…4294967295",
+    "encoding": "Bộ đếm tăng dần, được phép quay vòng",
+    "description": "Phát hiện mất gói hoặc bản tin sai thứ tự; parameter bổ sung khuyến nghị.",
+    "source": "Không có; Pi tạo bộ đếm bản tin ứng dụng, không phải sequence MAVLink."
+  },
+  {
+    "code": "10",
+    "name": "px4_connected",
+    "type": "bool",
+    "unit": "—",
+    "encoding": "0, 1",
+    "description": "CC còn nhận dữ liệu hoặc heartbeat từ PX4.",
+    "source": "Pi suy ra từ HEARTBEAT của autopilot và thời gian monotonic kể từ bản tin hợp lệ gần nhất."
+  },
+  {
+    "code": "11",
+    "name": "position_valid",
+    "type": "bool",
+    "unit": "—",
+    "encoding": "0, 1",
+    "description": "Tọa độ hiện tại đủ tin cậy để sử dụng.",
+    "source": "Không có một parameter/trường duy nhất; tổng hợp health bộ ước lượng PX4, loại vị trí cần dùng và độ mới dữ liệu."
+  },
+  {
+    "code": "12",
+    "name": "armed",
+    "type": "bool",
+    "unit": "—",
+    "encoding": "0, 1",
+    "description": "Trạng thái arm thực tế lấy từ PX4.",
+    "source": "Telemetry: HEARTBEAT.base_mode & MAV_MODE_FLAG_SAFETY_ARMED."
+  },
+  {
+    "code": "13",
+    "name": "landed_state",
+    "type": "enum uint8",
+    "unit": "—",
+    "encoding": "0=unknown; 1=on_ground; 2=in_air; 3=taking_off; 4=landing",
+    "description": "Trạng thái cất/hạ cánh thực tế.",
+    "source": "Telemetry: EXTENDED_SYS_STATE.landed_state (MAV_LANDED_STATE)."
+  },
+  {
+    "code": "14",
+    "name": "flight_mode",
+    "type": "enum uint8",
+    "unit": "—",
+    "encoding": "0=MANUAL; 1=POSITION; 2=HOLD; 3=MISSION; 4=RTL; 5=LAND; 6=OFFBOARD; 7=STABILIZED; 255=UNKNOWN",
+    "description": "Chế độ bay PX4 hiện tại.",
+    "source": "Telemetry: HEARTBEAT.custom_mode; giải mã PX4 rồi ánh xạ sang enum của bảng."
+  },
+  {
+    "code": "15",
+    "name": "vehicle_status",
+    "type": "enum uint8",
+    "unit": "—",
+    "encoding": "0=unknown; 1=standby; 2=active; 3=critical; 4=emergency; 5=shutdown",
+    "description": "Trạng thái tổng quát của flight controller.",
+    "source": "Telemetry: HEARTBEAT.system_status; ánh xạ MAV_STATE sang enum của bảng, không chép nguyên số."
+  },
+  {
+    "code": "16",
+    "name": "failsafe_active",
+    "type": "bool",
+    "unit": "—",
+    "encoding": "0, 1",
+    "description": "PX4 đang kích hoạt failsafe hay không.",
+    "source": "Không có parameter cấu hình tương đương; trạng thái nội bộ PX4 vehicle_status.failsafe. Qua MAVLink cần cơ chế trạng thái/sự kiện PX4 phù hợp."
+  },
+  {
+    "code": "17",
+    "name": "failsafe_reason",
+    "type": "enum uint8",
+    "unit": "—",
+    "encoding": "0=none; 1=rc_loss; 2=low_battery; 3=gps_loss; 4=geofence; 5=data_link_loss; 255=other",
+    "description": "Nguyên nhân failsafe.",
+    "source": "Không có parameter tương đương; Pi tổng hợp sự kiện/trạng thái PX4. Có thể nhiều nguyên nhân đồng thời; cần quy tắc ưu tiên."
+  },
+  {
+    "code": "18",
+    "name": "px4_heartbeat_age",
+    "type": "uint32",
+    "unit": "ms, ≥ 0",
+    "encoding": "Số nguyên",
+    "description": "Thời gian kể từ heartbeat PX4 gần nhất; dùng phát hiện dữ liệu stale.",
+    "source": "Pi suy ra từ HEARTBEAT của autopilot và thời gian monotonic kể từ bản tin hợp lệ gần nhất."
+  },
+  {
+    "code": "25",
+    "name": "latitude",
+    "type": "float64",
+    "unit": "độ, -90…90",
+    "encoding": "Số thực dấu chấm",
+    "description": "Vĩ độ hiện tại.",
+    "source": "Telemetry: GLOBAL_POSITION_INT.lat / 1e7 (độ)."
+  },
+  {
+    "code": "26",
+    "name": "longitude",
+    "type": "float64",
+    "unit": "độ, -180…180",
+    "encoding": "Số thực dấu chấm",
+    "description": "Kinh độ hiện tại.",
+    "source": "Telemetry: GLOBAL_POSITION_INT.lon / 1e7 (độ)."
+  },
+  {
+    "code": "27",
+    "name": "altitude_msl",
+    "type": "float32",
+    "unit": "m, -500…10000",
+    "encoding": "Số thực dấu chấm",
+    "description": "Độ cao so với mực nước biển trung bình.",
+    "source": "Telemetry: GLOBAL_POSITION_INT.alt / 1000 (m MSL)."
+  },
+  {
+    "code": "28",
+    "name": "altitude_relative",
+    "type": "float32",
+    "unit": "m, -100…10000",
+    "encoding": "Số thực dấu chấm",
+    "description": "Độ cao tương đối so với home/takeoff point.",
+    "source": "Telemetry: GLOBAL_POSITION_INT.relative_alt / 1000 (m so với home; chỉ so với điểm cất cánh nếu hai mốc trùng nhau)."
+  },
+  {
+    "code": "29",
+    "name": "altitude_agl",
+    "type": "float32",
+    "unit": "m, ≥ 0",
+    "encoding": "Số thực dấu chấm",
+    "description": "Độ cao so với mặt đất thực tế.",
+    "source": "Telemetry: ALTITUDE.bottom_clearance nếu hợp lệ và có nguồn đo/ước lượng; không thay bằng relative_alt."
+  },
+  {
+    "code": "30",
+    "name": "ground_speed",
+    "type": "float32",
+    "unit": "m/s, ≥ 0",
+    "encoding": "Số thực dấu chấm",
+    "description": "Tốc độ UAV so với mặt đất.",
+    "source": "Telemetry: VFR_HUD.groundspeed (m/s) hoặc hypot(GLOBAL_POSITION_INT.vx, vy) / 100."
+  },
+  {
+    "code": "31",
+    "name": "vertical_speed",
+    "type": "float32",
+    "unit": "m/s, -30…30",
+    "encoding": "Dương=lên; âm=xuống",
+    "description": "Tốc độ thẳng đứng.",
+    "source": "Telemetry: -GLOBAL_POSITION_INT.vz / 100 (m/s); đổi dấu NED để dương là lên."
+  },
+  {
+    "code": "32",
+    "name": "yaw",
+    "type": "float32",
+    "unit": "độ, 0…<360",
+    "encoding": "0° là Bắc",
+    "description": "Hướng bay.",
+    "source": "Telemetry: ATTITUDE.yaw * 180/pi, chuẩn hóa [0,360); hướng thân, không nhất thiết hướng chuyển động."
+  },
+  {
+    "code": "33",
+    "name": "roll",
+    "type": "float32",
+    "unit": "độ, -180…180",
+    "encoding": "Số thực dấu chấm",
+    "description": "Góc nghiêng ngang của UAV.",
+    "source": "Telemetry: ATTITUDE.roll * 180/pi (độ)."
+  },
+  {
+    "code": "34",
+    "name": "pitch",
+    "type": "float32",
+    "unit": "độ, -90…90",
+    "encoding": "Số thực dấu chấm",
+    "description": "Góc chúi/ngẩng của UAV.",
+    "source": "Telemetry: ATTITUDE.pitch * 180/pi (độ)."
+  },
+  {
+    "code": "37",
+    "name": "home_position_valid",
+    "type": "bool",
+    "unit": "—",
+    "encoding": "0, 1",
+    "description": "Home position đã được PX4 thiết lập hợp lệ.",
+    "source": "Không có parameter; tổng hợp home hợp lệ qua health PX4/MAVSDK và HOME_POSITION; không chỉ kiểm tra đã nhận một bản tin."
+  },
+  {
+    "code": "38",
+    "name": "home_latitude",
+    "type": "float64",
+    "unit": "độ, -90…90",
+    "encoding": "Số thực dấu chấm",
+    "description": "Vĩ độ home/takeoff point.",
+    "source": "Telemetry: HOME_POSITION.latitude / 1e7 (độ)."
+  },
+  {
+    "code": "39",
+    "name": "home_longitude",
+    "type": "float64",
+    "unit": "độ, -180…180",
+    "encoding": "Số thực dấu chấm",
+    "description": "Kinh độ home/takeoff point.",
+    "source": "Telemetry: HOME_POSITION.longitude / 1e7 (độ)."
+  },
+  {
+    "code": "40",
+    "name": "home_altitude_msl",
+    "type": "float32",
+    "unit": "m",
+    "encoding": "Có thể âm",
+    "description": "Độ cao MSL của home position.",
+    "source": "Telemetry: HOME_POSITION.altitude / 1000 (m MSL)."
+  },
+  {
+    "code": "44",
+    "name": "battery_remaining",
+    "type": "uint8",
+    "unit": "%, 0…100",
+    "encoding": "Số nguyên",
+    "description": "Dung lượng pin còn lại.",
+    "source": "Telemetry: BATTERY_STATUS.battery_remaining (%); -1 là không biết; chọn đúng battery id."
+  },
+  {
+    "code": "45",
+    "name": "battery_voltage",
+    "type": "float32",
+    "unit": "V, ≥ 0",
+    "encoding": "Số thực dấu chấm",
+    "description": "Điện áp toàn bộ bộ pin.",
+    "source": "Telemetry: Điện áp bộ pin tính từ BATTERY_STATUS.voltages (mV) theo quy ước MAVLink; nguồn thay thế SYS_STATUS.voltage_battery / 1000 khi hợp lệ."
+  },
+  {
+    "code": "46",
+    "name": "battery_current",
+    "type": "float32",
+    "unit": "A",
+    "encoding": "Có thể âm nếu đo được dòng sạc/tái sinh",
+    "description": "Dòng điện pin hiện tại.",
+    "source": "Telemetry: BATTERY_STATUS.current_battery / 100 (A); -1 là không có số đo trước khi chuyển đổi."
+  },
+  {
+    "code": "47",
+    "name": "cc_cpu_temperature",
+    "type": "float32",
+    "unit": "°C, thường 0…150",
+    "encoding": "Ví dụ 43:62.5",
+    "description": "Nhiệt độ CPU CC.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp nhiệt độ CPU Pi."
+  },
+  {
+    "code": "48",
+    "name": "battery_warning",
+    "type": "enum uint8",
+    "unit": "—",
+    "encoding": "0=none; 1=low; 2=critical; 3=emergency; 4=failed",
+    "description": "Mức cảnh báo pin do PX4 xác định.",
+    "source": "Telemetry: BATTERY_STATUS.charge_state khi được PX4 cung cấp; ánh xạ enum. Tham số cấu hình liên quan trong param1.params: BAT_LOW_THR=0.15; BAT_CRIT_THR=0.07; BAT_EMERGEN_THR=0.05. Đây là ngưỡng, không phải cảnh báo hiện tại."
+  },
+  {
+    "code": "49",
+    "name": "gps_fix_type",
+    "type": "enum uint8",
+    "unit": "—",
+    "encoding": "0=no_gps; 1=no_fix; 2=2d; 3=3d; 4=dgps; 5=rtk_float; 6=rtk_fixed",
+    "description": "Loại định vị GPS hiện tại.",
+    "source": "Telemetry: GPS_RAW_INT.fix_type; xử lý các giá trị ngoài enum bảng nếu có."
+  },
+  {
+    "code": "50",
+    "name": "satellites_visible",
+    "type": "uint8",
+    "unit": "0…255",
+    "encoding": "Số nguyên",
+    "description": "Số vệ tinh đang theo dõi.",
+    "source": "Telemetry: GPS_RAW_INT.satellites_visible; 255 là không biết."
+  },
+  {
+    "code": "51",
+    "name": "hdop",
+    "type": "float32",
+    "unit": "≥ 0",
+    "encoding": "Số thực dấu chấm",
+    "description": "Độ suy giảm chính xác theo phương ngang.",
+    "source": "Telemetry: GPS_RAW_INT.eph / 100 nếu nguồn xuất HDOP; UINT16_MAX là không biết. Kiểm tra quy ước thực tế PX4, không mặc định sai số mét là HDOP."
+  },
+  {
+    "code": "52",
+    "name": "vdop",
+    "type": "float32",
+    "unit": "≥ 0",
+    "encoding": "Số thực dấu chấm",
+    "description": "Độ suy giảm chính xác theo phương đứng.",
+    "source": "Telemetry: GPS_RAW_INT.epv / 100 nếu nguồn xuất VDOP; UINT16_MAX là không biết. Kiểm tra quy ước thực tế PX4, không mặc định sai số mét là VDOP."
+  },
+  {
+    "code": "56",
+    "name": "mission_id",
+    "type": "string",
+    "unit": "",
+    "encoding": "Chuỗi không chứa , hoặc : ở dạng siêu gọn",
+    "description": "ID nhiệm vụ đang thực hiện.",
+    "source": "Không có parameter tương đương; backend/Pi quản lý ID/phiên bản nhiệm vụ."
+  },
+  {
+    "code": "57",
+    "name": "mission_version",
+    "type": "uint32 hoặc string",
+    "unit": "",
+    "encoding": "Hai phía phải thống nhất một kiểu duy nhất",
+    "description": "Phiên bản kế hoạch bay CC/PX4 đã nhận.",
+    "source": "Không có parameter tương đương; backend/Pi quản lý ID/phiên bản nhiệm vụ."
+  },
+  {
+    "code": "58",
+    "name": "mission_status",
+    "type": "enum uint8",
+    "unit": "—",
+    "encoding": "0=none; 1=uploaded; 2=ready; 3=starting; 4=running; 5=paused; 6=returning; 7=landing; 8=completed; 9=cancelled; 10=failed",
+    "description": "Trạng thái vòng đời nhiệm vụ tại edge.",
+    "source": "Pi tổng hợp tiến độ nhiệm vụ, chế độ bay, landed state và kết quả lệnh; không có enum PX4 tương đương đầy đủ."
+  },
+  {
+    "code": "59",
+    "name": "current_waypoint_index",
+    "type": "uint16",
+    "unit": "0…N-1",
+    "encoding": "Số nguyên, index bắt đầu từ 0",
+    "description": "Waypoint đang được thực hiện.",
+    "source": "Telemetry: MISSION_CURRENT.seq; chỉ số mission item có thể gồm takeoff/land/lệnh khác, cần ánh xạ sang waypoint backend."
+  },
+  {
+    "code": "60",
+    "name": "waypoint_count",
+    "type": "uint16",
+    "unit": "≥ 0",
+    "encoding": "Số nguyên",
+    "description": "Tổng số waypoint trong nhiệm vụ.",
+    "source": "Mission protocol: MISSION_COUNT.count khi tải nhiệm vụ; Pi lưu lại. Số mission item chỉ bằng số waypoint nếu quy ước khớp."
+  },
+  {
+    "code": "61",
+    "name": "distance_to_next_waypoint_m",
+    "type": "float32",
+    "unit": "m, ≥ 0",
+    "encoding": "Số thực dấu chấm",
+    "description": "Khoảng cách đến waypoint kế tiếp.",
+    "source": "Telemetry: NAV_CONTROLLER_OUTPUT.wp_dist khi có và mục tiêu phù hợp; hoặc Pi tính từ vị trí và waypoint."
+  },
+  {
+    "code": "62",
+    "name": "distance_remaining",
+    "type": "float32",
+    "unit": "m, ≥ 0",
+    "encoding": "Số thực dấu chấm",
+    "description": "Tổng quãng đường dự kiến còn lại.",
+    "source": "Không có parameter; Pi tính từ vị trí hiện tại và các chặng còn lại."
+  },
+  {
+    "code": "63",
+    "name": "distance_travelled",
+    "type": "float32",
+    "unit": "m, ≥ 0",
+    "encoding": "Số thực dấu chấm",
+    "description": "Quãng đường thực tế đã bay trong nhiệm vụ.",
+    "source": "Không có parameter; Pi tích lũy quãng đường từ các mẫu vị trí hợp lệ."
+  },
+  {
+    "code": "64",
+    "name": "flight_time",
+    "type": "uint32",
+    "unit": "ms, ≥ 0",
+    "encoding": "Số nguyên",
+    "description": "Tổng thời gian đã bay hoặc thời gian nhiệm vụ.",
+    "source": "Không có parameter tương đương trực tiếp; Pi tính theo định nghĩa thời gian trên không/nhiệm vụ đã thống nhất. LND_FLIGHT_T_* là bộ đếm tích lũy, không thay thế trực tiếp."
+  },
+  {
+    "code": "65",
+    "name": "estimated_time_remaining",
+    "type": "uint32",
+    "unit": "ms, ≥ 0",
+    "encoding": "Số nguyên",
+    "description": "Thời gian ước tính còn lại.",
+    "source": "Không có parameter; Pi ước tính thời gian nhiệm vụ còn lại, không dùng thời gian pin còn lại thay thế."
+  },
+  {
+    "code": "66",
+    "name": "target_latitude",
+    "type": "float64",
+    "unit": "độ, -90…90",
+    "encoding": "Số thực dấu chấm",
+    "description": "Vĩ độ waypoint/đích hiện tại.",
+    "source": "Lấy tọa độ mục tiêu/mission item hiện tại từ kế hoạch trên Pi hoặc mission item đọc từ PX4; không phải parameter .params."
+  },
+  {
+    "code": "67",
+    "name": "target_longitude",
+    "type": "float64",
+    "unit": "độ, -180…180",
+    "encoding": "Số thực dấu chấm",
+    "description": "Kinh độ waypoint/đích hiện tại.",
+    "source": "Lấy tọa độ mục tiêu/mission item hiện tại từ kế hoạch trên Pi hoặc mission item đọc từ PX4; không phải parameter .params."
+  },
+  {
+    "code": "68",
+    "name": "target_altitude",
+    "type": "float32",
+    "unit": "m",
+    "encoding": "Phải thống nhất datum: MSL, relative hoặc AGL",
+    "description": "Độ cao mục tiêu.",
+    "source": "Lấy độ cao mục tiêu/mission item cùng coordinate_frame; xác định MSL/relative/AGL. MIS_TAKEOFF_ALT không thay thế cho mọi mục tiêu."
+  },
+  {
+    "code": "75",
+    "name": "mqtt_connected",
+    "type": "bool",
+    "unit": "—",
+    "encoding": "0, 1",
+    "description": "CC đang kết nối với MQTT broker.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp trạng thái MQTT client."
+  },
+  {
+    "code": "76",
+    "name": "connection_type",
+    "type": "enum uint8",
+    "unit": "—",
+    "encoding": "0=unknown; 1=ethernet; 2=wifi; 3=4g; 4=5g",
+    "description": "Loại kết nối mạng đang sử dụng.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp giao diện mạng đang dùng."
+  },
+  {
+    "code": "77",
+    "name": "signal_rssi",
+    "type": "int16",
+    "unit": "dBm",
+    "encoding": "Ví dụ -65",
+    "description": "Cường độ tín hiệu mạng.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp RSSI Wi-Fi/modem (không phải RSSI RC)."
+  },
+  {
+    "code": "78",
+    "name": "network_latency",
+    "type": "uint32",
+    "unit": "ms, ≥ 0",
+    "encoding": "Số nguyên",
+    "description": "Độ trễ đo từ CC đến broker/backend.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp độ trễ đến broker/backend."
+  },
+  {
+    "code": "79",
+    "name": "packet_loss",
+    "type": "float32",
+    "unit": "%, 0…100",
+    "encoding": "Số thực dấu chấm",
+    "description": "Tỷ lệ mất gói trong cửa sổ đo gần nhất.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp mất gói trên đường mạng đã định nghĩa (không đồng nhất SYS_STATUS.drop_rate_comm)."
+  },
+  {
+    "code": "80",
+    "name": "cc_cpu_usage",
+    "type": "float32",
+    "unit": "%, 0…100",
+    "encoding": "Số thực dấu chấm",
+    "description": "Mức sử dụng CPU CC.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp mức sử dụng CPU Pi."
+  },
+  {
+    "code": "81",
+    "name": "cc_memory_usage",
+    "type": "float32",
+    "unit": "%, 0…100",
+    "encoding": "Số thực dấu chấm",
+    "description": "Mức sử dụng RAM.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp mức sử dụng RAM Pi."
+  },
+  {
+    "code": "82",
+    "name": "cc_disk_free",
+    "type": "uint32",
+    "unit": "MB, ≥ 0",
+    "encoding": "Số nguyên",
+    "description": "Dung lượng lưu trữ còn trống.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp dung lượng đĩa trống Pi."
+  },
+  {
+    "code": "83",
+    "name": "cc_uptime",
+    "type": "uint64",
+    "unit": "s, ≥ 0",
+    "encoding": "Số nguyên",
+    "description": "Thời gian CC hoạt động từ lần khởi động gần nhất.",
+    "source": "Không có parameter PX4; Pi/hệ điều hành/ứng dụng cung cấp uptime Pi, không phải time_boot_ms Pixhawk."
+  }
+]

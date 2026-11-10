@@ -1,0 +1,11 @@
+{
+  "host": "mqtt.lacais.com",
+  "port": 8883,
+  "topic_prefix": "lac",
+  "username": "lacais",
+  "password_env": "MQTT_PASSWORD",
+  "tls": true,
+  "parameter_keys": "code",
+  "debug_interval_s": 10,
+  "control_log": "reports/mqtt_control.log"
+}
